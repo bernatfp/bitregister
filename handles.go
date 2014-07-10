@@ -2,11 +2,14 @@ package main
 
 import (
 	"net/http"
-	//"net/url"
+	"net/url"
 	"log"
 	"encoding/json"
 	"strings"
 )
+
+//debugging
+var _ = url.Parse
 
 //retrieve all pending orders
 func pendingOrdersHandle(w http.ResponseWriter, req *http.Request) {

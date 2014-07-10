@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
-	"bitbucket.org/chust/goprotodb/protodb"
+	"github.com/garyburd/redigo/redis"
 )
 
 const (
@@ -18,19 +18,23 @@ const (
 )
 
 /*
-Use BerkeleyDB (already installed with any bitcoind) for data storage
-Libraries:
-https://bitbucket.org/chust/goprotodb
-The problem with this one is that any user will need to install protobuffers
+This server uses Redis for data persistence at this point
 
-https://github.com/pebbe/dbxml
-The problem with this one is that I'm not sure whether BDB XML comes with any BDB install or it is totally separated
+Other options to consider:
 
-Alternatively, we can use an embedded Go data store:
-https://github.com/peterbourgon/diskv
-https://github.com/steveyen/gkvlite
-https://github.com/HouzuoGuo/tiedot
-https://github.com/boltdb/bolt
+- Use BerkeleyDB (already installed with any bitcoind) for data storage
+	Libraries:
+	- https://bitbucket.org/chust/goprotodb
+	  The problem with this one is that any user will need to install protobuffers
+
+	- https://github.com/pebbe/dbxml
+	  The problem with this one is that it's not clear whether BDB XML comes with any BDB install or it is totally separated
+
+- Alternatively, we can use an embedded Go data store:
+	- https://github.com/peterbourgon/diskv
+	- https://github.com/steveyen/gkvlite
+	- https://github.com/HouzuoGuo/tiedot
+	- https://github.com/boltdb/bolt
 */
 
 
@@ -47,29 +51,26 @@ func sendCommand() (btcjson.Reply, error) {
 	return reply, err
 }
 
-func createObj(){
-
-}
 
 //debugging, remove afterwards
 var _ = json.Marshal
 var _ = fmt.Println
 var _ = strings.Split
 var _ = url.Parse
+var _ = redis.Dial
 
 
 func main() {
 
-	log.Println("Starting server...")
+	log.Println("Starting server on port 12345...")
 
+	//Register HTTP server handlers
 	http.HandleFunc("/", rootHandle)
 	http.HandleFunc("/favicon.ico", faviconHandle)
 	http.HandleFunc("/orders/", ordersHandle)
 	http.HandleFunc("/orders/pending/", pendingOrdersHandle)
 	http.HandleFunc("/orders/completed/", completedOrdersHandle)
 	http.HandleFunc("/orders/id/", idOrdersHandle)	
-
-	go createObj()
 
 	err := http.ListenAndServe(":12345", nil)
 	if err != nil {
