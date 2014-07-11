@@ -65,12 +65,10 @@ func main() {
 	log.Println("Starting server on port 12345...")
 
 	//Register HTTP server handlers
-	http.HandleFunc("/", rootHandle)
-	http.HandleFunc("/favicon.ico", faviconHandle)
-	http.HandleFunc("/orders/", ordersHandle)
-	http.HandleFunc("/orders/pending/", pendingOrdersHandle)
-	http.HandleFunc("/orders/completed/", completedOrdersHandle)
-	http.HandleFunc("/orders/id/", idOrdersHandle)	
+	http.HandleFunc("/", rootHandle) //root handle isn't expected to do anything, at the moment it's used for debugging
+	http.HandleFunc("/favicon.ico", faviconHandle) //temporary
+	http.HandleFunc("/orders/", ordersHandle) //Orders resource
+	
 
 	err := http.ListenAndServe(":12345", nil)
 	if err != nil {

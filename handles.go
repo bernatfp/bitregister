@@ -6,73 +6,152 @@ import (
 	"log"
 	"encoding/json"
 	"strings"
+	"fmt"
+	"errors"
 )
+
 
 //debugging
 var _ = url.Parse
+var _ = errors.New
+var _ = strings.Join
 
-//retrieve all pending orders
-func pendingOrdersHandle(w http.ResponseWriter, req *http.Request) {
 
-	w.Write(nil)
+func retrieveOrders() []byte {
+	return []byte{}
 }
 
-//retrieve all completed orders
-func completedOrdersHandle(w http.ResponseWriter, req *http.Request) {
+func retrieveOrder(id string) []byte {
+	var data []byte
+	
+	db := new(DB)
+	db.init()
+	defer db.close()
 
-	w.Write(nil)
+	value, err := db.get(id)
+	if err != nil {
+		log.Println(fmt.Sprintf("Error GET id: %s\n Result: %s", id, value))
+		data = []byte("Error, this id does not exist")
+	} else {
+		data = []byte(value)
+	}
+
+	return data
 }
 
-//retrieve an order by id or create a new one
-func idOrdersHandle(w http.ResponseWriter, req *http.Request) {
+func createOrder(req *http.Request) []byte {
+	var data []byte
+
+	db := new(DB)
+	db.init()
+	defer db.close()
+
+	err := req.ParseForm()
+	if err != nil {
+		log.Println("Error ParseForm: ", err)
+	}
+
+	key := req.FormValue("id")
+	value := req.FormValue("value")
+
+	err = db.set(key, value)
+	if err != nil {
+		log.Println("Error set: ", err)
+		data = []byte("Error SET")	
+	} else {
+		data = []byte("Order stored")	
+	}
+
+	return data
+
+}
+
+func updateOrder(req *http.Request, id string) []byte {
+	return []byte{}
+}
+
+func removeOrder(id string) []byte {
+	return []byte{}
+}
+
+//Parses order ID from the request if included
+func parseId(req *http.Request) (string, error) {
+	var id string
+	var err error
 
 	params := strings.Split(req.URL.Path, "/")
 	idIndex := len(params) - 1
 	
+	//if url is /orders/ or /orders/<id>/ (instead of /orders or /orders/<id>)
 	if params[idIndex] == "" {
 		idIndex--
 	}
-	if idIndex != 3 || params[idIndex] == "" {
-		w.Write([]byte("Error, URL must follow this form: /orders/id/<id_value>"))
-		return
-	}
-	
-	id := params[idIndex]
-	var _ = id
 
+	switch idIndex {
+		// url is /orders
+		case 1:
+			id = ""
+		// url is /orders/<id>
+		case 2:
+			id = params[idIndex]
+		default:
+			id = ""
+			err = errors.New("Orders URL is malformed")
+	}
+
+	return id, err
+}
+
+// Resource: orders
+//
+// Methods accepted: GET, POST, DELETE
+//
+// GET /orders/ => lists all orders (accepts filters as part of the querystring)
+// GET /orders/<id> => returns order <id>
+// POST /orders/ => creates a new order
+// POST /orders/<id> => updates order <id>
+// DELETE /orders/<id> => deletes order <id>
+//
+// This is the orders handler function
+func ordersHandle(w http.ResponseWriter, req *http.Request) {	
 	var data []byte
 
-	switch req.Method {
-		case "GET":
-			//retrieve an order
-			data = []byte("GET id: " + id)
+	id, err := parseId(req)
 
-		case "POST":
-			//create an order with this id or update it
-			data = make([]byte, 0)
+	if err != nil {
+		w.Write([]byte(fmt.Sprintf("%v",err)))
+		return
+	}
 
-		default:
-			//unknown method, return error
-			data = make([]byte, 0)
-
+	switch {
+		case req.Method == "GET" && id == "":
+			data = retrieveOrders()
+		
+		case req.Method == "GET":
+			data = retrieveOrder(id)
+		
+		case req.Method == "POST" && id == "":
+			data = createOrder(req)
+		
+		case req.Method == "POST":
+			data = updateOrder(req, id)
+		
+		case req.Method == "DELETE":
+			data = removeOrder(id)
 	}
 
 	w.Write(data)
 }
 
-//retrieve all orders
-func ordersHandle(w http.ResponseWriter, req *http.Request) {
-
-	w.Write(nil)
-}
-
+//Debugging
 func faviconHandle(w http.ResponseWriter, req *http.Request) {
 	w.Write(nil)
 }
 
+//Debugging BTC commands
 func rootHandle(w http.ResponseWriter, req *http.Request) {
 
-	reply, err:= sendCommand()
+	reply, err := sendCommand()
 	if err != nil {
 		log.Println("Error sending command: ", err)
 	}
