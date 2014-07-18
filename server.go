@@ -62,6 +62,10 @@ var _ = redis.Dial
 
 func main() {
 
+	price, _ := updatePrice()
+	log.Println("Price USD: ", price.toUSD)
+
+
 	log.Println("Starting server on port 12345...")
 
 	//Register HTTP server handlers

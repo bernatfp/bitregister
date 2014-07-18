@@ -157,7 +157,6 @@ func faviconHandle(w http.ResponseWriter, req *http.Request) {
 
 // Debugging BTC commands
 func rootHandle(w http.ResponseWriter, req *http.Request) {
-
 	reply, err := sendCommand()
 	if err != nil {
 		log.Println("Error sending command: ", err)
