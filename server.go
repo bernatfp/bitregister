@@ -62,8 +62,8 @@ var _ = redis.Dial
 
 func main() {
 
-	price, _ := updatePrice()
-	log.Println("Price USD: ", price.toUSD)
+	price, err := updatePrice()
+	log.Println("Price USD: ", price.ToUSD)
 
 
 	log.Println("Starting server on port 12345...")
