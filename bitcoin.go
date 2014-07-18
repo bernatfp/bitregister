@@ -5,38 +5,31 @@ import (
 	"encoding/json"
 	"log"
 	"io/ioutil"
-	"fmt"
 )
 
 type Price struct {
-	toEUR string `json:"btc_to_eur"`
-	toGBP string `json:"btc_to_gbp"`
-	toUSD string `json:"btc_to_usd"`
-	btc_to_usd string
-	test bool
+	ToEUR string `json:"btc_to_eur"`
+	ToGBP string `json:"btc_to_gbp"`
+	ToUSD string `json:"btc_to_usd"`
 }
 
+//Returns current Coinbase rates for EUR, GBP and USD
 func updatePrice() (*Price, error) {
+	price := &Price{}
 	
 	resp, err := http.Get("https://coinbase.com/api/v1/currencies/exchange_rates")
 	if err != nil {
 		log.Println("Error sending GET: ", err)
+		return price, nil
 	}
 	defer resp.Body.Close()
-
 	body, err := ioutil.ReadAll(resp.Body)
 
-	var price Price
-	err = json.Unmarshal(body, &price)
+	err = json.Unmarshal(body, price)
 	if err != nil {
 		log.Println("Error decoding JSON: ", err)
+		return price, err
 	}
 
-	price.test = true;
-
-	fmt.Printf("%s\n", string(body))
-	fmt.Printf("%+v\n", price)
-
-	return &price, nil
-
+	return price, nil
 }
