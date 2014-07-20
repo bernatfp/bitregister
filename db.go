@@ -60,25 +60,47 @@ func (db *DB) close() error {
 	return db.pool.Close()
 }
 
-type Arguments interface {
-	ArgsConv() redis.Args
+
+//Converts arguments for Redis command
+func convertArgs(args interface{}) redis.Args {
+
+	switch v := args.(type) {
+		case string:
+			return redis.Args{}.Add(v)
+		
+		case []string:
+			redisArgs := redis.Args{}
+			for _, arg := range v {
+				redisArgs = redisArgs.Add(arg)
+			}
+			return redisArgs
+
+		case *Order:
+			redisArgs := redis.Args{}
+			return redisArgs.Add(v.Id).AddFlat(v)
+
+		case redis.Args:
+			return v
+
+	}
+
+	return nil
+
 }
+
 
 //Generic function that does the appropiate handling to send commands to Redis
 //Returns the response as received and must be manipulated by the caller
-func (db *DB) sendCommand(command string, strArgs ...string) (interface{}, error) {
+func (db *DB) sendCommand(command string, args ...interface{}) (interface{}, error) {
 	//Ask for a new connection
 	c := db.pool.Get()
 	defer c.Close()
-
-	//Convert command arguments because they must be of type []interface{}
-	args := redis.Args{}
-	for _, arg := range strArgs {
-		args = args.Add(arg)
-	}
+	
+	//generate redis compatible arguments
+	redisArgs := convertArgs(args)
 
 	//Send command
-	res, err := c.Do(command, args...)
+	res, err := c.Do(command, redisArgs...)
 	if err != nil {
 		log.Println("Error sending command: ", err)
 	}
@@ -99,7 +121,7 @@ func (db *DB) set(k string, v string) error {
 
 //GET operation
 //Receives a key and returns a value
-func (db *DB) get(k string) (string, error) {
+func (db *DB) get(k string) (string, error) {	
 	res, err := db.sendCommand("GET", k)
 	if err != nil {
 		//Happens when getted value is empty
@@ -145,8 +167,8 @@ func (db *DB) retrieveOrder(id string) (*Order, error){
 }
 
 
-func (db *DB) insertOrder(o *Order) error {
-	_, err := db.sendCommand("HGETALL", o.Id, redis.Args{}.AddFlat(o))
+func (db *DB) insertOrder(order *Order) error {
+	_, err := db.sendCommand("HSETALL", order)
 	if err != nil {
 		log.Println("Error sending HGETALL operation: ", err)
 	}
