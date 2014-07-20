@@ -58,68 +58,6 @@ func parseId(req *http.Request) (string, error) {
 // DELETE /orders/<id>/ => deletes order <id>
 //
 
-// GET /orders/
-func retrieveOrders() []byte {
-	return []byte{}
-}
-
-// GET /orders/<id>/
-func retrieveOrder(id string) []byte {
-	var data []byte
-	
-	db := new(DB)
-	db.init()
-	defer db.close()
-
-	value, err := db.get(id)
-	if err != nil {
-		log.Println(fmt.Sprintf("Error GET id: %s\n Result: %s", id, value))
-		data = []byte("Error, this id does not exist")
-	} else {
-		data = []byte(value)
-	}
-
-	return data
-}
-
-// POST /orders/
-func createOrder(req *http.Request) []byte {
-	var data []byte
-
-	db := new(DB)
-	db.init()
-	defer db.close()
-
-	err := req.ParseForm()
-	if err != nil {
-		log.Println("Error ParseForm: ", err)
-	}
-
-	key := req.FormValue("id")
-	value := req.FormValue("value")
-
-	err = db.set(key, value)
-	if err != nil {
-		log.Println("Error set: ", err)
-		data = []byte("Error SET")	
-	} else {
-		data = []byte("Order stored")	
-	}
-
-	return data
-
-}
-
-// POST /orders/<id>/
-func updateOrder(req *http.Request, id string) []byte {
-	return []byte{}
-}
-
-// DELETE /orders/<id>/
-func removeOrder(id string) []byte {
-	return []byte{}
-}
-
 // Orders HTTP Handler
 func ordersHandle(w http.ResponseWriter, req *http.Request) {	
 	var data []byte
@@ -162,7 +100,9 @@ func rootHandle(w http.ResponseWriter, req *http.Request) {
 		log.Println("Error sending command: ", err)
 	}
 
-	data, err := json.Marshal(reply)
+	_ = reply
+	//data, err := json.Marshal(reply)
+	data, err := json.Marshal(bitcoinRates)
 	if err != nil {
 		log.Println("Can't marshal reply: ", err)
 	}

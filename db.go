@@ -1,3 +1,11 @@
+//TO-DO
+//
+// * Optionally select index at the start 
+// * Implement get and set for sets and hashes
+//
+
+
+
 package main
 
 import (
@@ -52,6 +60,10 @@ func (db *DB) close() error {
 	return db.pool.Close()
 }
 
+type Arguments interface {
+	ArgsConv() redis.Args
+}
+
 //Generic function that does the appropiate handling to send commands to Redis
 //Returns the response as received and must be manipulated by the caller
 func (db *DB) sendCommand(command string, strArgs ...string) (interface{}, error) {
@@ -95,5 +107,64 @@ func (db *DB) get(k string) (string, error) {
 	}
 
 	return redis.String(res, err)
+}
+
+//GET operation
+//Receives a key and returns a value
+func (db *DB) del(k string) error {
+	_, err := db.sendCommand("DEL", k)
+	if err != nil {
+		//Happens when getted value is empty
+		log.Println("Error sending DEL operation: ", err)
+	}
+
+	return err
+}
+
+
+
+
+func (db *DB) retrieveOrder(id string) (*Order, error){
+	//res, err := c.Do("HGETALL", id)
+	res, err := db.sendCommand("HGETALL", id)
+	if err != nil {
+		log.Println("Error sending HGETALL operation: ", err)
+	}
+	
+	v, err := redis.Values(res, err)
+    if err != nil {
+        panic(err)
+    }
+
+    order := new(Order)
+    if err := redis.ScanStruct(v, order); err != nil {
+        panic(err)
+    }
+
+    return order, err
+}
+
+
+func (db *DB) insertOrder(o *Order) error {
+	_, err := db.sendCommand("HGETALL", o.Id, redis.Args{}.AddFlat(o))
+	if err != nil {
+		log.Println("Error sending HGETALL operation: ", err)
+	}
+
+	return err
+}
+/*
+func (db *DB) updateOrder(id string, o *Order) error {
+
+}
+*/
+
+func (db *DB) removeOrder(id string) error {
+	err := db.del(id) 
+	if err != nil {
+		log.Println("Error deleting order: ", err)
+	}
+
+	return err
 }
 
