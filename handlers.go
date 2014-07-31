@@ -54,7 +54,6 @@ func parseId(req *http.Request) (string, error) {
 // GET /orders/ => lists all orders (accepts filters as part of the querystring)
 // GET /orders/<id>/ => returns order <id>
 // POST /orders/ => creates a new order
-// POST /orders/<id>/ => updates order <id>
 // DELETE /orders/<id>/ => deletes order <id>
 //
 
@@ -77,9 +76,6 @@ func ordersHandle(w http.ResponseWriter, req *http.Request) {
 		
 		case req.Method == "POST" && id == "":
 			data = createOrder(req)
-		
-		case req.Method == "POST":
-			data = updateOrder(req, id)
 		
 		case req.Method == "DELETE":
 			data = removeOrder(id)

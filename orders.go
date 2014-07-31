@@ -74,10 +74,6 @@ func createOrder(req *http.Request) []byte {
 
 }
 
-// POST /orders/<id>/
-func updateOrder(req *http.Request, id string) []byte {
-	return []byte{}
-}
 
 // DELETE /orders/<id>/
 func removeOrder(id string) []byte {
