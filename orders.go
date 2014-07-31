@@ -4,6 +4,8 @@ import (
 	"log"
 	"fmt"
 	"net/http"
+	"encoding/json"
+	"strconv"
 )
 
 type Order struct {
@@ -35,12 +37,17 @@ func retrieveOrder(id string) []byte {
 	db.init()
 	defer db.close()
 
-	value, err := db.get(id)
+	order, err := db.retrieveOrder(id)
 	if err != nil {
-		log.Println(fmt.Sprintf("Error GET id: %s\n Result: %s", id, value))
+		log.Println(fmt.Sprintf("Error retrieve order: ", err))
 		data = []byte("Error, this id does not exist")
 	} else {
-		data = []byte(value)
+		//OK
+		order.populatePriceJson()
+		data, err = json.Marshal(order)
+		if err != nil {
+			log.Println(fmt.Sprintf("Error marshaling: ", err))
+		}
 	}
 
 	return data
@@ -50,19 +57,14 @@ func retrieveOrder(id string) []byte {
 func createOrder(req *http.Request) []byte {
 	var data []byte
 
+	order, err := parseOrder(req)
+	order.convertPrice()
+
 	db := new(DB)
 	db.init()
 	defer db.close()
 
-	err := req.ParseForm()
-	if err != nil {
-		log.Println("Error ParseForm: ", err)
-	}
-
-	key := req.FormValue("id")
-	value := req.FormValue("value")
-
-	err = db.set(key, value)
+	err = db.insertOrder(order)
 	if err != nil {
 		log.Println("Error set: ", err)
 		data = []byte("Error SET")	
@@ -70,6 +72,7 @@ func createOrder(req *http.Request) []byte {
 		data = []byte("Order stored")	
 	}
 
+	//Have to return payment data (id, address and amount in BTC)
 	return data
 
 }
@@ -95,3 +98,41 @@ func removeOrder(id string) []byte {
 
 	return data
 }
+
+//Helpers
+func parseOrder(req *http.Request) (*Order, error) {
+	
+	//using decoder instead of unmarshal
+	dec := json.NewDecoder(req.Body)
+	order := new(Order)
+	err := dec.Decode(order)
+	
+	return order, err
+}
+
+func (order *Order) convertPrice() {
+	switch order.Price.Currency {
+		case "EUR":
+			order.populatePriceRedis(bitcoinRates.ToEUR)
+		case "GBP":
+			order.populatePriceRedis(bitcoinRates.ToGBP)
+		case "USD":
+			order.populatePriceRedis(bitcoinRates.ToUSD)
+	}
+}
+
+func (order *Order) populatePriceRedis(price string) {
+	p, err := strconv.ParseFloat(price, 64)
+	if err != nil {
+		log.Println(fmt.Sprintf("Error parse float: ", err))
+	}
+	order.Currency = "BTC"
+	order.Amount = order.Price.Amount / p
+}
+
+func (order *Order) populatePriceJson() {
+	order.Price.Amount = order.Amount
+	order.Price.Currency = "BTC"
+}
+
+

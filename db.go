@@ -62,9 +62,8 @@ func (db *DB) close() error {
 
 
 //Converts arguments for Redis command
-func convertArgs(args interface{}) redis.Args {
-
-	switch v := args.(type) {
+func convertArgs(args []interface{}) redis.Args {
+	switch v := args[0].(type) {
 		case string:
 			return redis.Args{}.Add(v)
 		
@@ -81,7 +80,6 @@ func convertArgs(args interface{}) redis.Args {
 
 		case redis.Args:
 			return v
-
 	}
 
 	return nil
@@ -95,7 +93,7 @@ func (db *DB) sendCommand(command string, args ...interface{}) (interface{}, err
 	//Ask for a new connection
 	c := db.pool.Get()
 	defer c.Close()
-	
+
 	//generate redis compatible arguments
 	redisArgs := convertArgs(args)
 
@@ -144,8 +142,9 @@ func (db *DB) del(k string) error {
 }
 
 
-
-
+//The following are Redis functions adapted for Order
+//Useful to code additional behavior between DB and orders layer
+//HGETALL for type Order
 func (db *DB) retrieveOrder(id string) (*Order, error){
 	//res, err := c.Do("HGETALL", id)
 	res, err := db.sendCommand("HGETALL", id)
@@ -166,17 +165,17 @@ func (db *DB) retrieveOrder(id string) (*Order, error){
     return order, err
 }
 
-
+//HMSET for type Order
 func (db *DB) insertOrder(order *Order) error {
-	_, err := db.sendCommand("HSETALL", order)
+	_, err := db.sendCommand("HMSET", order)
 	if err != nil {
-		log.Println("Error sending HGETALL operation: ", err)
+		log.Println("Error sending HMSET operation: ", err)
 	}
 
 	return err
 }
 
-
+//DEL for type Order (not very useful right now, I know)
 func (db *DB) removeOrder(id string) error {
 	err := db.del(id) 
 	if err != nil {

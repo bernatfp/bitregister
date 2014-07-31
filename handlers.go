@@ -60,6 +60,7 @@ func parseId(req *http.Request) (string, error) {
 // Orders HTTP Handler
 func ordersHandle(w http.ResponseWriter, req *http.Request) {	
 	var data []byte
+	defer req.Body.Close()
 
 	id, err := parseId(req)
 	if err != nil {
