@@ -175,11 +175,12 @@ func (db *DB) insertOrder(order *Order) error {
 
 	return err
 }
-/*
-func (db *DB) updateOrder(id string, o *Order) error {
 
-}
-*/
+/*
+func (db *DB) updateOrder(id string, order *Order) error {
+
+}*/
+
 
 func (db *DB) removeOrder(id string) error {
 	err := db.del(id) 
