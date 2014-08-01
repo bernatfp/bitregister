@@ -1,7 +1,7 @@
 //TO-DO
 //
-// * Optionally select index at the start 
-// * Implement get and set for sets and hashes
+// * Optionally select index at the start (via configuration file)
+// 
 //
 
 
@@ -21,7 +21,7 @@ type DB struct {
 }
 
 
-//A simple example:
+// A simple example:
 //
 // db := new(DB)
 // db.init()
@@ -76,14 +76,15 @@ func convertArgs(args []interface{}) redis.Args {
 
 		case *Order:
 			redisArgs := redis.Args{}
-			return redisArgs.Add(v.Id).AddFlat(v)
+			//Prepend order tag to key
+			key := "bitregister:order:" + v.Id
+			return redisArgs.Add(key).AddFlat(v)
 
 		case redis.Args:
 			return v
 	}
 
 	return nil
-
 }
 
 
@@ -142,12 +143,13 @@ func (db *DB) del(k string) error {
 }
 
 
-//The following are Redis functions adapted for Order
-//Useful to code additional behavior between DB and orders layer
+//The following are Redis operations adapted for Order
+//Useful if we have to code additional behavior between DB and orders layer
+//
 //HGETALL for type Order
 func (db *DB) retrieveOrder(id string) (*Order, error){
-	//res, err := c.Do("HGETALL", id)
-	res, err := db.sendCommand("HGETALL", id)
+	key := "bitregister:order:" + id
+	res, err := db.sendCommand("HGETALL", key)
 	if err != nil {
 		log.Println("Error sending HGETALL operation: ", err)
 	}
@@ -175,9 +177,10 @@ func (db *DB) insertOrder(order *Order) error {
 	return err
 }
 
-//DEL for type Order (not very useful right now, I know)
+//DEL for type Order
 func (db *DB) removeOrder(id string) error {
-	err := db.del(id) 
+	key := "bitregister:order:" + id
+	err := db.del(key) 
 	if err != nil {
 		log.Println("Error deleting order: ", err)
 	}
@@ -185,3 +188,13 @@ func (db *DB) removeOrder(id string) error {
 	return err
 }
 
+//EXIST
+func (db *DB) existsOrder(id string) (bool, error) {
+	key := "bitregister:order:" + id
+	res, err := db.sendCommand("EXISTS", key)
+	if err != nil {
+		log.Println("Error checking if order exists: ", err)
+	}
+
+	return redis.Bool(res, err)
+}

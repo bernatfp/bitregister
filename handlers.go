@@ -51,7 +51,7 @@ func parseId(req *http.Request) (string, error) {
 //
 // Methods accepted: GET, POST, DELETE
 //
-// GET /orders/ => lists all orders (accepts filters as part of the querystring)
+// GET /orders/ => lists all orders, in a hash with two categories "filled" and "pending", each consists of a list with all id's
 // GET /orders/<id>/ => returns order <id>
 // POST /orders/ => creates a new order
 // DELETE /orders/<id>/ => deletes order <id>

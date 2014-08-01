@@ -8,6 +8,7 @@ import (
 	"strconv"
 )
 
+//Every order must contain this information
 type Order struct {
 	Id string `json:"id" redis:"id"`
 	Address string `json:"address" redis:"address"`
@@ -24,30 +25,71 @@ type PriceType struct {
 	Currency string `json:"currency" redis:"currency"`
 }
 
+//Struct returned when retrieving all orders
+type Orders struct {
+	Filled []string `json:"filled"`
+	Pending []string `json:"pending"`
+}
+
 // GET /orders/
 func retrieveOrders() []byte {
-	return []byte{}
+	
+	//Start DB connection
+	db := new(DB)
+	db.init()
+	defer db.close()
+
+	orders := new(Orders)
+
+	//Keys "bitregister:orders:*"
+
+	//Loop
+		//goroutine calls HGET of id to retrieve field filled
+
+	//Wait until all goroutines are finished and return marshaled result
+
+	data, err := json.Marshal(orders)
+	if err != nil {
+		log.Println(fmt.Sprintf("Error marshaling: ", err))
+	}
+
+	return data
 }
 
 // GET /orders/<id>/
 func retrieveOrder(id string) []byte {
 	var data []byte
 	
+	//Start DB connection
 	db := new(DB)
 	db.init()
 	defer db.close()
 
+	//Get order info
 	order, err := db.retrieveOrder(id)
 	if err != nil {
 		log.Println(fmt.Sprintf("Error retrieve order: ", err))
-		data = []byte("Error, this id does not exist")
-	} else {
-		//OK
-		order.populatePriceJson()
-		data, err = json.Marshal(order)
-		if err != nil {
-			log.Println(fmt.Sprintf("Error marshaling: ", err))
-		}
+		return []byte("Error, this id does not exist")
+	} 
+	
+	//Check the amount of money this order has received
+	amount, err := getBalance(order.Id)
+	if err != nil {
+		log.Println("Error getBalance of order: ", err)
+	}
+
+	//Check if amount received is enough
+	if amount >= order.Amount {
+		order.Filled = true
+		//Update info on background
+		go db.insertOrder(order)
+	}
+
+	//Format order ot be returned as JSON
+	order.populatePriceJson()
+	data, err = json.Marshal(order)
+	if err != nil {
+		log.Println(fmt.Sprintf("Error marshaling: ", err))
 	}
 
 	return data
@@ -55,22 +97,35 @@ func retrieveOrder(id string) []byte {
 
 // POST /orders/
 func createOrder(req *http.Request) []byte {
+	//Parse order from request
 	order, err := parseOrder(req)
-	order.convertPrice()
 
-	order.assignAddress()
-	order.Filled = false
-
+	//Start DB
 	db := new(DB)
 	db.init()
 	defer db.close()
 
+	//If order already exists, return stored order
+	if ok, err := db.existsOrder(order.Id); err != nil {
+		log.Println("Error check order exists: ", err)
+		return []byte("Error check order exists")
+	} else if ok {
+		return retrieveOrder(order.Id)
+	}
+
+	//Complete order information
+	order.convertPrice()
+	order.assignAddress()
+	order.Filled = false
+
+	//Store order
 	err = db.insertOrder(order)
 	if err != nil {
 		log.Println("Error insert order: ", err)
 		return []byte("Error insert order")	
 	}
 	
+	//Update bitcoin price on order JSON
 	order.populatePriceJson()
 	data, err := json.Marshal(order)	
 	if err != nil {
@@ -81,23 +136,21 @@ func createOrder(req *http.Request) []byte {
 
 }
 
-
 // DELETE /orders/<id>/
 func removeOrder(id string) []byte {
 	var data []byte
 
+	//Start DB
 	db := new(DB)
 	db.init()
 	defer db.close()
 
 	err := db.removeOrder(id)
-
-	//TO-DO return status code and message according to err
 	if err != nil {
 		log.Println(fmt.Sprintf("Error DEL id: %s\n", id))
-		data = []byte("Error deleting id")
+		return []byte("Error deleting id")
 	} else {
-		data = []byte("OK")
+		data = []byte("Order deleted")
 	}
 
 	return data
@@ -141,6 +194,7 @@ func (order *Order) populatePriceJson() {
 	order.Price.Currency = "BTC"
 }
 
+//Creates an address and assigns it to the order
 func (order *Order) assignAddress() error {
 	addr, err := createAddress(order.Id)
 	if err != nil {
