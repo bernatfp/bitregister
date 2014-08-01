@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"time"
 	"github.com/conformal/btcjson"
+	"errors"
 )
 
 
@@ -49,11 +50,36 @@ func updateRates(rates *Rates) {
 }
 
 
-
 //Sends commands to bitcoind
-func sendCommand() (btcjson.Reply, error) {
-	msg, err := btcjson.CreateMessage("getinfo")
+func sendCommand(command string, argsStr ...string) (btcjson.Reply, error) {
+
+	args := make([]interface{}, len(argsStr))
+	for i, v := range argsStr {
+		args[i] = v
+	}
+
+	msg, err := btcjson.CreateMessage(command, args...)
 	reply, err := btcjson.RpcCommand(user, password, server, msg)
 
 	return reply, err
 }
+
+//Creates an address for the id provided if it does not exist, otherwise returns existing address
+func createAddress(id string) (string, error) {
+	reply, err := sendCommand("getaccountaddress", id)
+	if err != nil {
+		log.Println("Error with getaccountaddress command: ", err)
+	}
+
+	v, ok := reply.Result.(string)
+	if ok != true {
+		log.Println("Error converting address to string")
+		err = errors.New("Error converting address to string")
+	}
+
+	return v, err
+}
+
+
+
+
