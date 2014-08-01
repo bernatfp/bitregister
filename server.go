@@ -13,8 +13,8 @@ import (
 	"io/ioutil"
 )
 
+//Global
 var bitcoinRates *Rates
-
 
 //debugging, remove afterwards
 var _ = json.Marshal
@@ -33,6 +33,8 @@ func main() {
 	//Corroutine updates Bitcoin rates every minute
 	bitcoinRates = &Rates{}
 	go updateRates(bitcoinRates)
+
+
 
 	//Register HTTP server handlers
 	http.HandleFunc("/", rootHandle) //root handle isn't expected to do anything, at the moment it's used for debugging

@@ -11,7 +11,7 @@ import (
 type Order struct {
 	Id string `json:"id" redis:"id"`
 	Address string `json:"address" redis:"address"`
-	Status string `json:"status" redis:"status"`
+	Filled bool `json:"filled" redis:"filled"`
 	//This one is ignored by Redis as declared types are not supported
 	Price PriceType `json:"price" redis:"-"`
 	//To fix this issue we declare amount and currency and tell json to ignore it
@@ -55,10 +55,11 @@ func retrieveOrder(id string) []byte {
 
 // POST /orders/
 func createOrder(req *http.Request) []byte {
-	var data []byte
-
 	order, err := parseOrder(req)
 	order.convertPrice()
+
+	order.assignAddress()
+	order.Filled = false
 
 	db := new(DB)
 	db.init()
@@ -66,13 +67,16 @@ func createOrder(req *http.Request) []byte {
 
 	err = db.insertOrder(order)
 	if err != nil {
-		log.Println("Error set: ", err)
-		data = []byte("Error SET")	
-	} else {
-		data = []byte("Order stored")	
+		log.Println("Error insert order: ", err)
+		return []byte("Error insert order")	
+	}
+	
+	order.populatePriceJson()
+	data, err := json.Marshal(order)	
+	if err != nil {
+		log.Println("Error marshal order: ", err)
 	}
 
-	//Have to return payment data (id, address and amount in BTC)
 	return data
 
 }
@@ -121,6 +125,7 @@ func (order *Order) convertPrice() {
 	}
 }
 
+//Redis hashes don't support multiple levels so we must include Price fields as Order fields
 func (order *Order) populatePriceRedis(price string) {
 	p, err := strconv.ParseFloat(price, 64)
 	if err != nil {
@@ -130,9 +135,21 @@ func (order *Order) populatePriceRedis(price string) {
 	order.Amount = order.Price.Amount / p
 }
 
+//Vice versa
 func (order *Order) populatePriceJson() {
 	order.Price.Amount = order.Amount
 	order.Price.Currency = "BTC"
+}
+
+func (order *Order) assignAddress() error {
+	addr, err := createAddress(order.Id)
+	if err != nil {
+		log.Println("Error assigning address to order: ", err)
+	}
+
+	order.Address = addr
+
+	return err
 }
 
 
